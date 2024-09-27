@@ -1,141 +1,192 @@
 #ifndef GRAPHICSRR_H
 #define GRAPHICSRR_H
 
+#ifdef _WIN32 
 #include <windows.h>
 #include <windowsx.h>
-#include <glad/glad.h>
+#endif
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <vector>
-#include "camera.h"
+#include "Base/camera.h"
 #include <iostream>
-#include "Model.h"
-#include "MainModel.h"
-#include "SkyDome.h"
-#include "Terreno.h"
-#include "Billboard.h"
-#include "CollitionDetection.h"
+#include "Base/Scene.h"
 
-class Scenario {
-public:
+class Scenario : public Scene {
+private:
 	SkyDome* sky;
 	Terreno* terreno;
-	std::vector<Billboard *> billBoard;
-	std::vector<Model *> ourModel;
-	MainModel* camara;
-	HWND hwnd;
+	std::vector<Billboard*> billBoard;
+	std::vector<Model*> ourModel;
+	Model* camara;
+	Water* water;
 	float angulo;
-
-	Scenario(HWND hWnd) {
+	int animacion = 0;
+	int frameArbol = 1;
+public:
+	Scenario(Camera *cam) {
 		glm::vec3 translate;
 		glm::vec3 scale;
-		MainModel* model = new MainModel(hWnd, "models/Cube.obj");
+		Model* model = new Model("models/Cube.obj", cam);
 		translate = glm::vec3(0.0f, 0.0f, 3.0f);
 		scale = glm::vec3(0.25f, 0.25f, 0.25f);	// it's a bit too big for our scene, so scale it down
 		model->setScale(&scale);
 		model->setTranslate(&translate);
-		InitGraph(hWnd, model);
+		InitGraph(model);
 	}
-	Scenario(HWND hWnd, MainModel *camIni) {
-		InitGraph(hWnd, camIni);
+	Scenario(Model *camIni) {
+		InitGraph(camIni);
 	}
-	void InitGraph(HWND hWnd, MainModel *main) {
-		hwnd = hWnd;
+	void InitGraph(Model *main) {
 		float matAmbient[] = { 1,1,1,1 };
 		float matDiff[] = { 1,1,1,1 };
 		angulo = 0;
 		camara = main;
 		//creamos el objeto skydome
-		sky = new SkyDome(hWnd, 32, 32, 20, (WCHAR*)L"skydome/earth.jpg", main);
+		sky = new SkyDome(32, 32, 20, (WCHAR*)L"skydome/earth.jpg", main->cameraDetails);
 		//creamos el terreno
-		terreno = new Terreno(hWnd, (WCHAR*)L"skydome/terreno.jpg", (WCHAR*)L"skydome/texterr2.jpg", 400, 400, main);
+		terreno = new Terreno((WCHAR*)L"skydome/terreno.jpg", (WCHAR*)L"skydome/texterr2.jpg", 400, 400, main->cameraDetails);
+		water = new Water((WCHAR*)L"textures/terreno.bmp", (WCHAR*)L"textures/water.bmp", 20, 20, camara->cameraDetails);
+		glm::vec3 translate;
+		glm::vec3 scale;
+		glm::vec3 rotation;
+		translate = glm::vec3(0.0f, 20.0f, 30.0f);
+		water->setTranslate(&translate);
 		// load models
 		// -----------
 		ourModel.push_back(main);
 		Model* model;
-		glm::vec3 translate;
-		glm::vec3 scale;
-		glm::vec3 rotation;
-		model = new Model(this->hwnd, "models/fogata.obj", main);
+		model = new Model("models/fogata.obj", main->cameraDetails);
 		translate = glm::vec3(0.0f, 10.0f, 25.0f);
 		model->setTranslate(&translate);
-		rotation = glm::vec3(1.0f, 0.0f, 0.0f); //rotation Y
-		model->setRotation(90, &rotation); // 90° rotation
+		rotation = glm::vec3(1.0f, 0.0f, 0.0f); //rotation X
+		model->setRotX(45); // 45ï¿½ rotation
 		ourModel.push_back(model);
-		model= new Model(this->hwnd, "models/pez.obj", main);
+		model= new Model("models/pez.obj", main->cameraDetails);
 		translate = glm::vec3(0.0f, 7.0f, 50.0f);
 		model->setTranslate(&translate);
 		ourModel.push_back(model);
-//		model = new Model(this->hwnd, "models/IronMan.obj", main);
+		model = new Model("models/dancing_vampire.dae", main->cameraDetails);
+		translate = glm::vec3(0.0f, terreno->Superficie(0.0f, 60.0f) , 60.0f);
+		scale = glm::vec3(0.1f, 0.1f, 0.1f);	// it's a bit too big for our scene, so scale it down
+		model->setTranslate(&translate);
+		model->setScale(&scale);
+		model->setRotY(90);
+		ourModel.push_back(model);
+		try{
+			Animation *ani = new Animation("models/dancing_vampire.dae", model->GetBoneInfoMap(), model->GetBoneCount());
+		    model->setAnimator(new Animator(ani));
+		}catch(...){
+			cout << "Could not load animation!\n";
+		}
+		model = new Model("models/Silly_Dancing.dae", main->cameraDetails);
+		translate = glm::vec3(10.0f, terreno->Superficie(0.0f, 60.0f) , 60.0f);
+		scale = glm::vec3(0.1f, 0.1f, 0.1f);	// it's a bit too big for our scene, so scale it down
+		model->setTranslate(&translate);
+		model->setScale(&scale);
+		model->setRotY(180);
+		ourModel.push_back(model);
+		try{
+			Animation *ani = new Animation("models/Silly_Dancing.dae", model->GetBoneInfoMap(), model->GetBoneCount());
+		    model->setAnimator(new Animator(ani));
+		}catch(...){
+			cout << "Could not load animation!\n";
+		}
+//		model = new Model("models/IronMan.obj", main);
 //		translate = glm::vec3(0.0f, 20.0f, 30.0f);
 //		scale = glm::vec3(0.025f, 0.025f, 0.025f);	// it's a bit too big for our scene, so scale it down
 //		model->setScale(&scale);
 //		model->setTranslate(&translate);
 //		ourModel.push_back(model);
-		model = new Model(this->hwnd, "models/backpack.obj", main, false, false);
+		model = new Model("models/backpack.obj", main->cameraDetails, false, false);
 		translate = glm::vec3(20.0f, 14.0f, 0.0f);
 		scale = glm::vec3(1.0f, 1.0f, 1.0f);	// it's a bit too big for our scene, so scale it down
 		model->setTranslate(&translate);
 		model->setScale(&scale);
 		ourModel.push_back(model);
-		inicializaBillboards(hWnd);
+		inicializaBillboards();
 	}
 
-	void inicializaBillboards(HWND hWnd)
-	{
+	void inicializaBillboards() {
 		float ye = terreno->Superficie(0, 0);
-		billBoard.push_back(new Billboard(hWnd, (WCHAR*)L"billboards/Arbol.png", 6, 6, 0, ye - 1, 0, camara));
+		billBoard.push_back(new Billboard((WCHAR*)L"billboards/Arbol.png", 6, 6, 0, ye - 1, 0, camara->cameraDetails));
 
 		ye = terreno->Superficie(5, -5);
-		billBoard.push_back(new Billboard(hWnd, (WCHAR*)L"billboards/Arbol2.png", 6, 6, 5, ye - 1, -5, camara));
+		billBoard.push_back(new Billboard((WCHAR*)L"billboards/Arbol2.png", 6, 6, 5, ye - 1, -5, camara->cameraDetails));
 
 		ye = terreno->Superficie(-9, -15);
-		billBoard.push_back(new Billboard(hWnd, (WCHAR*)L"billboards/Arbol3.png", 8, 8, -9, ye - 1, -15, camara));
+		billBoard.push_back(new Billboard((WCHAR*)L"billboards/Arbol3.png", 8, 8, -9, ye - 1, -15, camara->cameraDetails));
 	}
 
 	//el metodo render toma el dispositivo sobre el cual va a dibujar
 	//y hace su tarea ya conocida
-	void Render(HDC hDC)
-	{
+	Scenario* Render() {
 		//borramos el biffer de color y el z para el control de profundidad a la 
 		//hora del render a nivel pixel.
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 //		glClearColor(255.0f, 255.0f, 255.0f, 255.0f);
-		// Posicionamos la camara pixeles arriba de su posicion en el terreno
-		camara->getPosition().y = terreno->Superficie(camara->getPosition().x, camara->getPosition().z) + 1.7;
-		// Actualizamos la camara
-		camara->CamaraUpdate();
 
+		// Actualizamos la camara
+		camara->cameraDetails->CamaraUpdate(camara->getRotY(), camara->getTranslate());
+
+		if (this->animacion > 25) { // Timer se ejecuta cada 1000/30 = 33.333 ms
+			float ye = terreno->Superficie(5, -5);
+			Billboard* temporal = billBoard[1];
+			wstring textura = L"billboards/Arbol" +
+				(this->frameArbol == 1 ? L"" : to_wstring(this->frameArbol)) + L".png";
+			billBoard[1] = new Billboard((WCHAR*)textura.c_str(), 6, 6, 5, ye - 1, -5, camara->cameraDetails);
+			if (this->frameArbol == 3) {
+				this->frameArbol = 1;
+			}
+			else {
+				this->frameArbol++;
+			}
+			this->animacion = 0;
+			delete temporal;
+		}
+		else {
+			animacion++;
+		}
 		// Decimos que dibuje la media esfera
 		sky->Draw();
 		// Ahora el terreno
 		terreno->Draw();
+		water->Draw();
+		// Dibujamos cada billboard que este cargado en el arreglo de billboards.
+		for (int i = 0; i < billBoard.size(); i++)
+			billBoard[i]->Draw();
 
 		// Dibujamos cada modelo que este cargado en nuestro arreglo de modelos
 		for (int i = 0; i < ourModel.size(); i++) {
 			ourModel[i]->Draw();
 		}
 
-		// Dibujamos cada billboard que este cargado en el arreglo de billboards.
-		for (int i = 0; i < billBoard.size(); i++)
-			billBoard[i]->Draw();
 		// Le decimos a winapi que haga el update en la ventana
-		SwapBuffers(hDC);
+		return this;
 	}
-
-	bool lookForCollition() {
-		std::pair<Node*, Node*> innerCollisionNodes;
-		for (int i = 0; i < ourModel.size(); i++) {
-			if (ourModel[i] != camara) {
-				innerCollisionNodes = findCollision(camara->kdTree.getRoot(), camara->makeTransScale(glm::mat4(1)), ourModel[i]->kdTree.getRoot(), ourModel[i]->makeTransScale(glm::mat4(1)));
-				if (innerCollisionNodes.first) {
-					return true;
-				}
-			}
-		}
-		return false;
+	
+	std::vector<Model*> *getLoadedModels() {
+		return &ourModel;
+	}
+	std::vector<Billboard*> *getLoadedBillboards() {
+		return &billBoard;
+	}
+	Model* getMainModel() {
+		return this->camara;
+	}
+	float getAngulo() {
+		return this->angulo;
+	}
+	void setAngulo(float angulo) {
+		this->angulo = angulo;
+	}
+	SkyDome* getSky() {
+		return sky;
+	}
+	Terreno* getTerreno() {
+		return terreno;
 	}
 
 	~Scenario() {
